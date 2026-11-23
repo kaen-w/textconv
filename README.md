@@ -8,6 +8,8 @@
 
 支持 **macOS 菜单栏** 和 **Windows 托盘**，两边都有全局快捷键、右键入口和图形设置。
 
+**下载**：[最新版本](https://github.com/kaen-w/textconv/releases/latest) · Windows 用 `Setup.exe`（在线安装）或 `Portable.exe`（免安装）· macOS 用 `.dmg`
+
 ---
 
 ## 它到底解决什么问题
