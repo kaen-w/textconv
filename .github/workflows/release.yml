@@ -70,4 +70,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag }}
-          files: dist/*.exe
+          # 只传自包含版；在线安装包（NSIS）在 macOS 上编译，避免 Windows runner 的代码页问题
+          files: dist/TextConv-Portable-*.exe

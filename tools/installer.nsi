@@ -1,4 +1,4 @@
-; TextConv Windows 安装程序
+﻿; TextConv Windows 安装程序
 ; 由 tools/build_windows.sh 调用：makensis -DVERSION=... -DSTAGE=... -DOUT=... installer.nsi
 Unicode true
 !include "MUI2.nsh"
