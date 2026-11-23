@@ -198,11 +198,7 @@ tools/build_macos.sh
 tools/build_windows.sh
 ```
 
-打 tag 后推送到 GitHub，CI 会自动构建两个安装包并挂到 Release 上：
-
-```bash
-git tag v0.2.6 && git push origin v0.2.6
-```
+CI 里也有同样的构建（`.github/workflows/release.yml`），在 Actions 页面手动触发、填入 tag 即可，不会自动覆盖已发布的产物。
 
 ## 三、安装
 

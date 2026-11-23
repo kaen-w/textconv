@@ -1,8 +1,13 @@
 name: release
 
+# 手动触发：在 Actions 页面点 Run workflow，填一个已存在的 tag。
+# 不跟 push tag 绑定，避免未经人确认的构建直接覆盖 Release 产物。
 on:
-  push:
-    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "已存在的 tag（例如 v0.2.6）"
+        required: true
 
 permissions:
   contents: write
@@ -12,6 +17,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -31,6 +38,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag }}
       - name: 安装 NSIS
         run: choco install nsis -y --no-progress
       - name: 构建 exe
@@ -52,5 +61,6 @@ jobs:
           path: artifacts
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event.inputs.tag }}
           files: artifacts/**/*
-          generate_release_notes: true
+          generate_release_notes: false
