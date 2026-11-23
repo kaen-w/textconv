@@ -4,13 +4,17 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+# CI 里没有 .venv，退回系统 python
+PY="$ROOT/.venv/bin/python"
+[ -x "$PY" ] || PY="$(command -v python3)"
+
 VERSION="$(sed -n 's/.*__version__ = "\(.*\)".*/\1/p' textconv/__init__.py | head -1)"
 APP="dist/TextConv.app"
 DMG="dist/TextConv-$VERSION.dmg"
 
 rm -rf build dist .pyinstaller
 PYINSTALLER_CONFIG_DIR="$ROOT/.pyinstaller" \
-  .venv/bin/pyinstaller \
+  "$PY" -m PyInstaller \
   --windowed --noconfirm --clean \
   --name TextConv \
   --icon assets/TextConv.icns \
