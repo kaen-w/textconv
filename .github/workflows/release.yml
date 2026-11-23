@@ -8,9 +8,13 @@ on:
       tag:
         description: "已存在的 tag（例如 v0.2.7）"
         required: true
+      attach:
+        description: "构建完直接上传到该 tag 的 Release"
+        type: boolean
+        default: false
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   macos:
@@ -61,3 +65,9 @@ jobs:
         with:
           name: windows
           path: dist/*.exe
+      - name: 上传到 Release
+        if: inputs.attach
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag }}
+          files: dist/*.exe
