@@ -6,8 +6,9 @@
 
 | 平台 | 安装包 | 说明 |
 |---|---|---|
-| Windows 10/11 | [TextConv-Setup.exe](https://github.com/kaen-w/textconv/releases/latest) | 双击安装，自动装依赖并注册托盘 / 右键菜单 |
-| macOS 11+ | [TextConv.dmg](https://github.com/kaen-w/textconv/releases/latest) | 拖进「应用程序」，首次启动在系统设置里授予辅助功能权限 |
+| Windows 10/11 | [TextConv-Setup.exe](https://github.com/kaen-w/textconv/releases/latest)（126 KB） | 在线安装：自动下载 Python 和依赖（内置国内镜像），注册托盘 / 右键菜单 / 开机自启 |
+| Windows 10/11 | [TextConv-Portable.exe](https://github.com/kaen-w/textconv/releases/latest)（约 20 MB） | 自包含：Python 和依赖全打进去，双击即用、无需联网；首次启动自动注册右键菜单 |
+| macOS 11+ | [TextConv.dmg](https://github.com/kaen-w/textconv/releases/latest)（7.3 MB） | 拖进「应用程序」；首次打开需右键→打开（未公证），再授予辅助功能权限 |
 
 不用安装也能跑：`pip install -e .` 后 `python -m textconv.menubar`（macOS）或 `python -m textconv.win_tray`（Windows）。
 
