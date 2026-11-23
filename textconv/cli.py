@@ -39,7 +39,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="tc",
         description="把零散文本转成 SQL IN / Excel 粘贴 / JSON 数组 / Python 字面量。",
-        epilog="示例：tc sql --clipboard --copy   # 剪贴板内容转成 SQL IN 并写回剪贴板",
+        epilog="示例：tc sql --input clipboard --copy   # 剪贴板内容转成 SQL IN 并写回剪贴板",
     )
     parser.add_argument("format", nargs="?", help="输出格式，见 --formats")
     parser.add_argument(
