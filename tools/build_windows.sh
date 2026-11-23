@@ -19,9 +19,14 @@ FILES=(
   assets/textconv.ico assets/logo-tray.png assets/logo-64.png assets/logo.svg
 )
 for f in textconv/*.py; do FILES+=("$f"); done
+BUILD_DATE="$(date +%Y-%m-%d)"
 for f in "${FILES[@]}"; do
   mkdir -p "$STAGE/$(dirname "$f")"
-  cp "$f" "$STAGE/$f"
+  if [ "$f" = "更新说明.txt" ]; then
+    sed -e "s/{{VERSION}}/$VERSION/" -e "s/{{DATE}}/$BUILD_DATE/" "$f" > "$STAGE/$f"
+  else
+    cp "$f" "$STAGE/$f"
+  fi
 done
 
 mkdir -p "$ROOT/dist"
