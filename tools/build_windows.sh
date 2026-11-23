@@ -23,7 +23,10 @@ BUILD_DATE="$(date +%Y-%m-%d)"
 for f in "${FILES[@]}"; do
   mkdir -p "$STAGE/$(dirname "$f")"
   if [ "$f" = "更新说明.txt" ]; then
-    sed -e "s/{{VERSION}}/$VERSION/" -e "s/{{DATE}}/$BUILD_DATE/" "$f" > "$STAGE/$f"
+    {
+      printf '\xef\xbb\xbf'
+      sed -e "s/{{VERSION}}/$VERSION/" -e "s/{{DATE}}/$BUILD_DATE/" "$f"
+    } > "$STAGE/$f"
   else
     cp "$f" "$STAGE/$f"
   fi
