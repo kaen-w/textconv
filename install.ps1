@@ -25,6 +25,7 @@ param(
     [switch]$NoPath,
     [switch]$NoStart,
     [switch]$Quiet,
+    [switch]$InstallerMode,
     [string]$Mirror = "",
     [string]$PythonExe = ""
 )
@@ -32,6 +33,10 @@ param(
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
+if ($InstallerMode) {
+    # NSIS 的 nsExec 按系统 ANSI 代码页解码子进程输出；这里对齐，避免中文变乱码
+    try { [Console]::OutputEncoding = [System.Text.Encoding]::Default } catch { }
+}
 
 # ---------------------------------------------------------------- 常量
 $Root = $PSScriptRoot
@@ -367,7 +372,7 @@ _make_icon().save(r'$IconPath', sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (
     if (-not $NoAutostart) { Register-Autostart } else { Write-Note '跳过开机自启（-NoAutostart）' }
     if (-not $NoContextMenu) { Register-ContextMenu } else { Write-Note '跳过右键菜单（-NoContextMenu）' }
 
-    $version = '0.2.7'
+    $version = '0.2.8'
     try {
         $version = (& $VenvPython -c "import textconv; print(textconv.__version__)" 2>$null | Select-Object -First 1).Trim()
     } catch { }

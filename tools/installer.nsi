@@ -2,6 +2,7 @@
 ; 由 tools/build_windows.sh 调用：makensis -DVERSION=... -DSTAGE=... -DOUT=... installer.nsi
 Unicode true
 !include "MUI2.nsh"
+!include "LogicLib.nsh"
 
 !ifndef VERSION
   !define VERSION "0.0.0"
@@ -36,9 +37,18 @@ Section "TextConv" SecMain
   SetOutPath "$INSTDIR"
   File /r "${STAGE}\*.*"
 
-  DetailPrint "正在安装依赖并注册右键菜单（首次需要联网）..."
-  ExecWait 'powershell -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\install.ps1" -NoStart' $0
-  DetailPrint "install.ps1 退出码：$0"
+  SetDetailsPrint both
+  DetailPrint "正在安装 TextConv（首次需要联网下载 Python 与依赖，约 30-90 秒）..."
+  DetailPrint ""
+  nsExec::ExecToLog 'powershell -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\install.ps1" -NoStart -InstallerMode'
+  Pop $0
+  DetailPrint ""
+  ${If} $0 != 0
+    DetailPrint "安装脚本退出码：$0"
+    MessageBox MB_ICONEXCLAMATION|MB_OK "安装没有完全成功（退出码 $0）。$\r$\n可运行安装目录下的 debug.bat 查看详细日志。"
+  ${Else}
+    DetailPrint "安装完成。"
+  ${EndIf}
 
   CreateDirectory "$SMPROGRAMS\TextConv"
   CreateShortCut "$SMPROGRAMS\TextConv\TextConv.lnk" "$INSTDIR\run.bat" "" "$INSTDIR\assets\textconv.ico"
