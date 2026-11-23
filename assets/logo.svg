@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="115" fill="#0c1220"/>
+  <text x="256" y="306" text-anchor="middle"
+        font-family="'SF Mono', Menlo, Consolas, monospace"
+        font-size="150" font-weight="700">
+    <tspan fill="#faf7f0">(</tspan><tspan fill="#f5b301">'a'</tspan><tspan fill="#faf7f0">)</tspan>
+  </text>
+</svg>

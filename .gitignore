@@ -1,0 +1,23 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# 构建产物（安装包走 GitHub Releases，不进仓库）
+build/
+dist/
+*.spec
+*.zip
+*.dmg
+*.exe
+.pyinstaller/
+.uv-cache/
+
+# 运行时日志
+menubar.log
+menubar.err.log
+tray.log
+
+# macOS
+.DS_Store
