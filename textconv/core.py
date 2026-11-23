@@ -78,8 +78,9 @@ def _render_json(items: Sequence[str]) -> str:
 
 
 def _render_excel(items: Sequence[str]) -> str:
-    # 单列时也保持“粘贴原样”：一个值一行，粘进 Excel 就是一列
-    return "\n".join(items)
+    # 单列用空格连接：Excel 的筛选搜索框是按空格分隔做多值筛选的
+    # （要往单元格里一列一列贴，用「Excel 一列」格式）
+    return " ".join(items)
 
 
 def _render_column(items: Sequence[str]) -> str:
@@ -89,7 +90,7 @@ def _render_column(items: Sequence[str]) -> str:
 
 FORMATS: List[Format] = [
     Format("sql", "SQL IN 子句", "SQL IN 子句", _render_sql, "('a', 'b')"),
-    Format("excel", "Excel 粘贴", "Excel 粘贴", _render_excel, "按原样，多列保留表格"),
+    Format("excel", "Excel 粘贴", "Excel 粘贴", _render_excel, "空格分隔，多列保留表格"),
     Format("json", "JSON 数组", "JSON 数组", _render_json, '["a", "b"]'),
     Format("tuple", "Python 元组", "Python 元组", _render_tuple, "('a', 'b')"),
     Format("list", "Python 列表", "Python 列表", _render_list, "['a', 'b']"),

@@ -82,7 +82,7 @@ class FormatTests(unittest.TestCase):
 
     def test_excel_paste_single_column(self):
         # 单列也按“粘贴原样”：一个值一行
-        self.assertEqual(core.convert("a、b、c", "excel", ["、"]), "a\nb\nc")
+        self.assertEqual(core.convert("a、b、c", "excel", ["、"]), "a b c")
 
     def test_excel_column(self):
         self.assertEqual(core.convert("a、b、c", "column", ["、"]), "a\nb\nc")
