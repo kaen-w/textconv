@@ -25,6 +25,9 @@ APP_TITLE = "TextConv"
 
 # ---------------------------------------------------------------- 小工具
 def _asset_path(*parts: str) -> str:
+    bundled = getattr(sys, "_MEIPASS", None)  # PyInstaller 打包后的解包目录
+    if bundled:
+        return os.path.join(bundled, "assets", *parts)
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(root, "assets", *parts)
 
@@ -85,6 +88,71 @@ def _single_instance() -> bool:
         return True
 
 
+# ---------------------------------------------------------------- 右键菜单
+MENU_ITEMS = [
+    ("01sql", "复制为 SQL IN 子句", "sql"),
+    ("02excel", "复制为 Excel 粘贴", "excel"),
+    ("03json", "复制为 JSON 数组", "json"),
+    ("04tuple", "复制为 Python 元组", "tuple"),
+    ("05list", "复制为 Python 列表", "list"),
+    ("06column", "复制为 Excel 一列", "column"),
+]
+MENU_BASE = r"Software\Classes\*\shell\TextConv"
+
+
+def _menu_command() -> str:
+    """右键菜单调用的命令：自包含版是 exe 本身，源码版是 pythonw。"""
+    if getattr(sys, "frozen", False):
+        return f'"{sys.executable}" --file'
+    exe = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
+    return f'"{exe}" -m textconv.win_tray --file'
+
+
+def register_context_menu() -> bool:
+    try:
+        import winreg
+
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, MENU_BASE) as key:
+            winreg.SetValueEx(key, "MUIVerb", 0, winreg.REG_SZ, "TextConv 转换")
+            winreg.SetValueEx(key, "SubCommands", 0, winreg.REG_SZ, "")
+        for verb, label, fmt in MENU_ITEMS:
+            path = rf"{MENU_BASE}\shell\{verb}"
+            with winreg.CreateKey(winreg.HKEY_CURRENT_USER, path) as key:
+                winreg.SetValueEx(key, "MUIVerb", 0, winreg.REG_SZ, label)
+            with winreg.CreateKey(winreg.HKEY_CURRENT_USER, path + r"\command") as key:
+                winreg.SetValueEx(key, "", 0, winreg.REG_SZ, f'{_menu_command()} {fmt} "%1"')
+        log.info("右键菜单已注册")
+        return True
+    except Exception:
+        log.exception("注册右键菜单失败")
+        return False
+
+
+def unregister_context_menu() -> bool:
+    try:
+        import winreg
+
+        for verb, _, _ in MENU_ITEMS:
+            try:
+                winreg.DeleteKey(winreg.HKEY_CURRENT_USER, rf"{MENU_BASE}\shell\{verb}\command")
+            except FileNotFoundError:
+                pass
+            try:
+                winreg.DeleteKey(winreg.HKEY_CURRENT_USER, rf"{MENU_BASE}\shell\{verb}")
+            except FileNotFoundError:
+                pass
+        for key in (rf"{MENU_BASE}\shell", MENU_BASE):
+            try:
+                winreg.DeleteKey(winreg.HKEY_CURRENT_USER, key)
+            except FileNotFoundError:
+                pass
+        log.info("右键菜单已移除")
+        return True
+    except Exception:
+        log.exception("移除右键菜单失败")
+        return False
+
+
 # ---------------------------------------------------------------- 托盘 App
 class TrayApp:
     def __init__(self) -> None:
@@ -141,6 +209,9 @@ class TrayApp:
                 checked=lambda item: bool(self.config.play_sound),
             )
         )
+        items.append(pystray.Menu.SEPARATOR)
+        items.append(pystray.MenuItem("注册资源管理器右键菜单", lambda icon, item: register_context_menu()))
+        items.append(pystray.MenuItem("移除资源管理器右键菜单", lambda icon, item: unregister_context_menu()))
         items.append(pystray.Menu.SEPARATOR)
         items.append(pystray.MenuItem("设置…", self._open_settings))
         items.append(pystray.MenuItem("打开配置文件", self._open_config))
@@ -473,6 +544,21 @@ def main(argv=None) -> int:
     )
     argv = list(sys.argv[1:] if argv is None else argv)
 
+    if "--file" in argv:
+        index = argv.index("--file")
+        try:
+            fmt_key, path = argv[index + 1], argv[index + 2]
+        except IndexError:
+            print("用法: TextConv --file <format> <path>", file=sys.stderr)
+            return 2
+        from .fileconv import main as file_main
+
+        return file_main([fmt_key, path])
+
+    if "--register-menu" in argv:
+        return 0 if register_context_menu() else 1
+    if "--unregister-menu" in argv:
+        return 0 if unregister_context_menu() else 1
     if "--self-test" in argv:
         return self_test()
     if "--install-autostart" in argv:
@@ -485,6 +571,10 @@ def main(argv=None) -> int:
     if not _single_instance():
         print("TextConv 已经在运行。", file=sys.stderr)
         return 0
+
+    # 自包含版没有安装脚本，首次启动时自己把右键菜单登记好
+    if getattr(sys, "frozen", False) and "--no-register" not in argv:
+        register_context_menu()
 
     app = TrayApp()
     app.run()
