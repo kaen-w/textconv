@@ -479,7 +479,15 @@ class TrayApp:
         import ctypes
         import tempfile
 
-        url = update.pick_asset(release, "win32")
+        # 自包含版没有安装器，下载 Portable 让用户替换；在线安装版下载 Setup 直接运行
+        portable = bool(getattr(sys, "frozen", False))
+        if portable:
+            url = next(
+                (u for n, u in release.assets.items() if n.startswith("TextConv-Portable-")),
+                None,
+            )
+        else:
+            url = update.pick_asset(release, "win32")
         if not url:
             ctypes.windll.user32.MessageBoxW(None, "这个版本没有 Windows 安装包。", "TextConv", 0x30)
             return
@@ -489,7 +497,15 @@ class TrayApp:
         def worker():
             try:
                 update.download(url, dest)
-                os.startfile(dest)  # noqa: S606 - Windows 专用
+                if portable:
+                    ctypes.windll.user32.MessageBoxW(
+                        None,
+                        f"新版已下载到：\n{dest}\n\n退出托盘后，用它替换原来的 exe 即可。",
+                        "TextConv 更新",
+                        0x40,
+                    )
+                else:
+                    os.startfile(dest)  # noqa: S606 - Windows 专用
             except Exception as exc:
                 log.exception("下载更新失败")
                 ctypes.windll.user32.MessageBoxW(None, f"下载失败：{exc}", "TextConv", 0x30)
