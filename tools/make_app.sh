@@ -36,7 +36,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <dict>
 	<key>CFBundleName</key><string>TextConv</string>
 	<key>CFBundleDisplayName</key><string>TextConv</string>
-	<key>CFBundleIdentifier</key><string>com.local.textconv</string>
+	<key>CFBundleIdentifier</key><string>io.github.kaen-w.textconv</string>
 	<key>CFBundleExecutable</key><string>TextConv</string>
 	<key>CFBundlePackageType</key><string>APPL</string>
 	<key>CFBundleShortVersionString</key><string>$VERSION</string>

@@ -121,7 +121,10 @@ function Fail($message) {
     exit 1
 }
 function Ask-Yes($question) {
-    if ($Quiet) { return $true }
+    # 安装器模式 / 静默 / 没有交互式控制台时，Read-Host 会直接抛错，
+    # 这里一律按“是”继续（NSIS 里跑安装就会走到这条）。
+    if ($Quiet -or $InstallerMode) { return $true }
+    try { if ([Console]::IsInputRedirected) { return $true } } catch { return $true }
     $answer = Read-Host "$question [Y/n]"
     return (-not $answer) -or ($answer -match '^(y|yes|Y|YES|是)$')
 }
@@ -504,8 +507,19 @@ function Invoke-Uninstall {
 }
 
 # ---------------------------------------------------------------- 入口
-if ($Uninstall) {
-    Invoke-Uninstall
-} else {
-    Invoke-Install
+try {
+    if ($Uninstall) {
+        Invoke-Uninstall
+    } else {
+        Invoke-Install
+    }
+} catch {
+    $message = $_.Exception.Message
+    Write-Log "  [ERROR] $message"
+    Write-Host ''
+    Write-Host "  [FAILED] $message" -ForegroundColor Red
+    if ($script:InstallerMode) {
+        Write-Host "  Log file: $script:InstallLog"
+    }
+    exit 1
 }

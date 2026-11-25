@@ -38,6 +38,7 @@ Section "TextConv" SecMain
   File /r "${STAGE}\*.*"
 
   SetDetailsPrint both
+  SetOutPath "$INSTDIR"
   DetailPrint "正在安装 TextConv（首次需要联网下载 Python 与依赖，约 30-90 秒）..."
   DetailPrint ""
   nsExec::ExecToLog 'powershell -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\install.ps1" -NoStart -InstallerMode'
@@ -45,7 +46,9 @@ Section "TextConv" SecMain
   DetailPrint ""
   ${If} $0 != 0
     DetailPrint "安装脚本退出码：$0"
-    MessageBox MB_ICONEXCLAMATION|MB_OK "安装没有完全成功（退出码 $0）。$\r$\n可运行安装目录下的 debug.bat 查看详细日志。"
+    IfFileExists "$APPDATA\TextConv\install.log" 0 +2
+      ExecShell "open" "$APPDATA\TextConv\install.log"
+    MessageBox MB_ICONEXCLAMATION|MB_OK "安装没有成功（退出码 $0）。$\r$\n安装日志：$APPDATA\TextConv\install.log$\r$\n（已尝试自动打开；也可以运行安装目录下的 debug.bat）"
   ${Else}
     DetailPrint "安装完成。"
   ${EndIf}

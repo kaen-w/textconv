@@ -19,7 +19,7 @@ PYINSTALLER_CONFIG_DIR="$ROOT/.pyinstaller" \
   --name TextConv \
   --icon assets/TextConv.icns \
   --add-data "assets:assets" \
-  --osx-bundle-identifier com.local.textconv \
+  --osx-bundle-identifier io.github.kaen-w.textconv \
   --paths "$ROOT" --collect-submodules textconv \
   --exclude-module PIL --exclude-module tkinter --exclude-module _tkinter \
   --exclude-module pystray --exclude-module keyboard --exclude-module pyperclip \
