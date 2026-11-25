@@ -75,6 +75,8 @@ class Config:
     auto_paste: bool = True
     play_sound: bool = True
     asked_permission: bool = False
+    check_updates: bool = True
+    last_update_check: str = ""
     hotkeys: Dict[str, str] = field(default_factory=lambda: default_hotkeys())
     load_error: Optional[str] = field(default=None, compare=False)
 
@@ -99,7 +101,9 @@ class Config:
             cfg.custom_delimiters = [
                 d for d in raw["custom_delimiters"] if isinstance(d, str) and d
             ]
-        for attr in ("dedupe", "auto_paste", "play_sound", "asked_permission"):
+        if isinstance(raw.get("last_update_check"), str):
+            cfg.last_update_check = raw["last_update_check"]
+        for attr in ("dedupe", "auto_paste", "play_sound", "asked_permission", "check_updates"):
             if isinstance(raw.get(attr), bool):
                 setattr(cfg, attr, raw[attr])
         if isinstance(raw.get("hotkeys"), dict):

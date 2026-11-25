@@ -6,10 +6,13 @@
 
 from __future__ import annotations
 
+import datetime
 import json
 import logging
 import os
+import subprocess
 import sys
+import threading
 
 import objc
 from AppKit import (
@@ -26,10 +29,11 @@ from AppKit import (
     NSSound,
 )
 from Foundation import NSObject
+from PyObjCTools import AppHelper
 
 from . import clipboard, core, paste
 from .config import Config, config_path, app_dir, state_path
-from . import __version__
+from . import __version__, update
 from .hotkeys import HotKeyManager, describe_combo
 from .settings_window import SettingsWindow
 
@@ -101,6 +105,7 @@ class MenuBarApp(NSObject):
         self.settings_window = None
         self._flash_token = 0
         self._status_image = None
+        self._update_hint = ""
         self._last_input = None
         self._last_output = None
         return self
@@ -118,6 +123,8 @@ class MenuBarApp(NSObject):
             log.error(self.config.load_error)
             self._flash("配置有误，已用默认值")
         self._maybe_request_permission()
+        if self.config.check_updates and update.due_for_check(self.config.last_update_check):
+            threading.Thread(target=self._update_worker, args=(False,), daemon=True).start()
 
     def applicationWillTerminate_(self, notification):
         if self.hotkey_manager is not None:
@@ -172,6 +179,70 @@ class MenuBarApp(NSObject):
         if value == self._flash_token:
             self._set_icon()
 
+    # ------------------------------------------------------------ 更新
+    def checkUpdates_(self, sender):
+        threading.Thread(target=self._update_worker, args=(True,), daemon=True).start()
+
+    @objc.python_method
+    def _update_worker(self, manual: bool) -> None:
+        release = update.fetch_latest()
+        self.config.last_update_check = datetime.datetime.now().isoformat(timespec="seconds")
+        try:
+            self.config.save()
+        except Exception:
+            log.exception("保存检查时间失败")
+
+        if release is None:
+            if manual:
+                AppHelper.callAfter(self._alert, "检查更新失败", "连不上 GitHub，请稍后再试。")
+            return
+
+        if update.is_newer(release.version, __version__):
+            self._update_hint = release.version
+            AppHelper.callAfter(self._on_update_found, release, manual)
+        elif manual:
+            AppHelper.callAfter(self._alert, "已经是最新版本", f"当前版本 {__version__}。")
+
+    @objc.python_method
+    def _on_update_found(self, release, manual: bool) -> None:
+        if not manual:
+            self._rebuild_menu()
+            return
+
+        alert = NSAlert.alloc().init()
+        alert.setMessageText_(f"发现新版本 {release.version}")
+        alert.setInformativeText_(f"当前版本 {__version__}。下载安装包并打开？")
+        alert.addButtonWithTitle_("下载并安装")
+        alert.addButtonWithTitle_("稍后")
+        if alert.runModal() != NSAlertFirstButtonReturn:
+            return
+
+        url = update.pick_asset(release, "darwin")
+        if not url:
+            self._alert("下载失败", "这个版本没有 macOS 安装包。")
+            return
+        name = url.rsplit("/", 1)[-1]
+        dest = os.path.join(os.path.expanduser("~/Downloads"), name)
+
+        def worker():
+            try:
+                update.download(url, dest)
+                subprocess.run(["open", dest], check=False)
+                AppHelper.callAfter(self._alert, "已开始下载", f"安装包已保存到 {dest}\n\n打开后把 TextConv.app 拖进「应用程序」覆盖即可。")
+            except Exception as exc:
+                log.exception("下载更新失败")
+                AppHelper.callAfter(self._alert, "下载失败", str(exc))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    @objc.python_method
+    def _alert(self, title: str, message: str) -> None:
+        alert = NSAlert.alloc().init()
+        alert.setMessageText_(title)
+        alert.setInformativeText_(message)
+        alert.addButtonWithTitle_("好")
+        alert.runModal()
+
     # ------------------------------------------------------------ 菜单
     @objc.python_method
     def _rebuild_menu(self):
@@ -204,6 +275,13 @@ class MenuBarApp(NSObject):
             menu.addItem_(item)
 
         menu.addItem_(NSMenuItem.separatorItem())
+
+        update_title = "检查更新…"
+        if self._update_hint:
+            update_title = f"有新版本 {self._update_hint} · 检查更新…"
+        update_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(update_title, "checkUpdates:", "")
+        update_item.setTarget_(self)
+        menu.addItem_(update_item)
 
         settings_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("设置…", "openSettings:", ",")
         settings_item.setTarget_(self)

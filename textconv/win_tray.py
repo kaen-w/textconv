@@ -14,7 +14,7 @@ import sys
 import threading
 import time
 
-from . import __version__, clipboard, core, paste
+from . import __version__, clipboard, core, paste, update
 from .config import Config, app_dir, config_path, state_path
 from .win_hotkeys import WinHotKeyManager, describe_combo, normalize_combo
 
@@ -213,6 +213,7 @@ class TrayApp:
         items.append(pystray.MenuItem("注册资源管理器右键菜单", lambda icon, item: register_context_menu()))
         items.append(pystray.MenuItem("移除资源管理器右键菜单", lambda icon, item: unregister_context_menu()))
         items.append(pystray.Menu.SEPARATOR)
+        items.append(pystray.MenuItem("检查更新…", self._check_update))
         items.append(pystray.MenuItem("设置…", self._open_settings))
         items.append(pystray.MenuItem("打开配置文件", self._open_config))
         items.append(pystray.Menu.SEPARATOR)
@@ -427,10 +428,80 @@ class TrayApp:
 
         return action
 
+    # -------------------------------------------------------- 更新
+    def _check_update(self, icon=None, item=None) -> None:
+        threading.Thread(target=self._check_update_worker, args=(True,), daemon=True).start()
+
+    def _check_update_worker(self, manual: bool) -> None:
+        import ctypes
+
+        import datetime
+
+        release = update.fetch_latest()
+        self.config.last_update_check = datetime.datetime.now().isoformat(timespec="seconds")
+        try:
+            self.config.save()
+        except Exception:
+            log.exception("保存检查时间失败")
+
+        if release is None:
+            if manual:
+                ctypes.windll.user32.MessageBoxW(
+                    None, "检查失败：连不上 GitHub。\n可以手动打开 Releases 页面下载。", "TextConv", 0x40
+                )
+            return
+
+        if not update.is_newer(release.version, __version__):
+            if manual:
+                ctypes.windll.user32.MessageBoxW(
+                    None, f"已经是最新版本（{__version__}）。", "TextConv", 0x40
+                )
+            return
+
+        if not manual:
+            try:
+                self._icon.notify(f"新版本 {release.version} 可用，右键托盘 → 检查更新", "TextConv")
+            except Exception:
+                pass
+            return
+
+        answer = ctypes.windll.user32.MessageBoxW(
+            None,
+            f"发现新版本 {release.version}（当前 {__version__}）。\n\n现在下载并运行安装程序？",
+            "TextConv 更新",
+            0x04 | 0x40,  # MB_YESNO | MB_ICONINFORMATION
+        )
+        if answer != 6:  # IDYES
+            return
+        self._download_update(release)
+
+    def _download_update(self, release) -> None:
+        import ctypes
+        import tempfile
+
+        url = update.pick_asset(release, "win32")
+        if not url:
+            ctypes.windll.user32.MessageBoxW(None, "这个版本没有 Windows 安装包。", "TextConv", 0x30)
+            return
+        name = url.rsplit("/", 1)[-1]
+        dest = os.path.join(tempfile.gettempdir(), name)
+
+        def worker():
+            try:
+                update.download(url, dest)
+                os.startfile(dest)  # noqa: S606 - Windows 专用
+            except Exception as exc:
+                log.exception("下载更新失败")
+                ctypes.windll.user32.MessageBoxW(None, f"下载失败：{exc}", "TextConv", 0x30)
+
+        threading.Thread(target=worker, daemon=True).start()
+
     # -------------------------------------------------------- 运行
     def run(self) -> None:
         log.info("TextConv 托盘启动，pid=%s", os.getpid())
         self._register_hotkeys()
+        if self.config.check_updates and update.due_for_check(self.config.last_update_check):
+            threading.Thread(target=self._check_update_worker, args=(False,), daemon=True).start()
         if self.hotkey_errors:
             self._notify("部分快捷键注册失败：" + "，".join(self.hotkey_errors))
         self._icon.run()

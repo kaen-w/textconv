@@ -159,6 +159,24 @@ macOS 源码安装时把 `tc` 换成 `.venv/bin/tc`，或者先 `source .venv/bi
 
 ---
 
+## 更新
+
+**手动检查**：菜单栏图标 →「检查更新…」（Windows：右键托盘 →「检查更新…」）。
+
+**自动检查**：启动后每 24 小时查一次 GitHub 最新版本，发现新版会提示。关掉的话把配置里的 `check_updates` 设为 `false`。
+
+发现新版本后：
+
+| 平台 | 行为 |
+|---|---|
+| Windows | 询问后下载 `TextConv-Setup-x.y.z.exe` 并直接运行，装完自动重启托盘 |
+| macOS | 下载 `.dmg` 到「下载」并打开，把 `TextConv.app` 拖进「应用程序」覆盖即可 |
+
+> 更新走 GitHub API，网络不通时会静默跳过（自动检查不弹任何错误）。
+> 可以设环境变量 `TEXTCONV_UPDATE_URL` 指向自建镜像，返回同样结构的 JSON 即可。
+
+---
+
 ## 安装问题排查
 
 ### macOS 排查
@@ -297,6 +315,8 @@ tools/build_windows_portable.sh # 自包含 exe（需在 Windows 上跑）
 | `play_sound` | 布尔 | `false` | 完成后提示音 |
 | `hotkeys` | 对象 | 见上文 | 每个格式的快捷键字符串 |
 | `asked_permission` | 布尔 | `false` | 是否已经提示过辅助功能授权 |
+| `check_updates` | 布尔 | `true` | 启动时检查新版本（24 小时最多一次） |
+| `last_update_check` | 字符串 | `""` | 上次检查时间，程序自己维护 |
 
 ---
 
