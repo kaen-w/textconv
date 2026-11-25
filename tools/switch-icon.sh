@@ -1,8 +1,8 @@
 #!/bin/bash
 # 切换 macOS 菜单栏图标
-# 用法：./switch-icon.sh tile_ts | clipboard | document | document_ts | bubble
+# 用法：./tools/switch-icon.sh tile_ts | clipboard | document | document_ts | bubble
 set -e
-ROOT="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 STYLE="${1:-document_ts}"
 RUNNER="$ROOT/.venv/bin/python -m textconv.menubar"
 LABEL="com.local.textconv.menubar"
