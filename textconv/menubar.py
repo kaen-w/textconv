@@ -480,7 +480,30 @@ class MenuBarApp(NSObject):
             )
             if not ok:
                 self.hotkey_errors.append(describe_combo(combo))
+
+        # 兜底：菜单栏图标被挤出屏幕时，用 ⌃⌥⌘T 直接把菜单弹出来
+        if self.hotkey_manager is not None:
+            self.hotkey_manager.register("ctrl+alt+cmd+t", self._popup_menu)
+
         self._rebuild_menu()
+
+    @objc.python_method
+    def _popup_menu(self):
+        """弹出状态栏菜单；图标不可见时退回到鼠标位置。"""
+        try:
+            item = self.status_item
+            if item is None or self.menu is None:
+                return
+            button = item.button()
+            if button is not None and button.window() is not None:
+                button.performClick_(None)
+                return
+            from AppKit import NSEvent
+
+            point = NSEvent.mouseLocation()
+            self.menu.popUpMenuPositioningItem_atLocation_inView_(None, point, None)
+        except Exception:
+            log.exception("弹出菜单失败")
 
     @objc.python_method
     def _write_state(self):
