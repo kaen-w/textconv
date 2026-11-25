@@ -5,7 +5,7 @@ import sys
 
 def main() -> int:
     argv = sys.argv[1:]
-    if "--service" in argv or "--doctor" in argv or "--formats" in argv:
+    if any(flag in argv for flag in ("--service", "--doctor", "--formats", "--check-update")):
         from textconv.cli import main as cli_main
 
         return cli_main(argv)

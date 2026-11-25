@@ -8,7 +8,7 @@ import subprocess
 import sys
 from typing import List, Optional
 
-from . import clipboard, core
+from . import __version__, clipboard, core
 from .config import Config, config_path
 
 
@@ -72,6 +72,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--formats", action="store_true", help="列出全部格式")
     parser.add_argument("--open-config", action="store_true", help="打开配置文件")
     parser.add_argument(
+        "--check-update",
+        action="store_true",
+        help="检查是否有新版本",
+    )
+    parser.add_argument(
         "--doctor",
         action="store_true",
         help="检查安装状态：权限 / 配置 / 右键服务 / 菜单栏进程",
@@ -101,6 +106,18 @@ def _resolve_delimiters(args: argparse.Namespace, cfg: Config) -> List[str]:
 def main(argv: Optional[List[str]] = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
+
+    if args.check_update:
+        from . import update
+
+        release = update.fetch_latest()
+        if release is None:
+            print("检查失败：连不上 GitHub（可设置 TEXTCONV_UPDATE_URL 指向镜像）")
+            return 1
+        newer = update.is_newer(release.version, __version__)
+        print(f"当前版本 {__version__}，最新版本 {release.version}")
+        print("有新版本可用" if newer else "已经是最新版本")
+        return 0
 
     if args.doctor:
         return doctor()

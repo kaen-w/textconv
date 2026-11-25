@@ -23,7 +23,6 @@ PYINSTALLER_CONFIG_DIR="$ROOT/.pyinstaller" \
   --paths "$ROOT" --collect-submodules textconv \
   --exclude-module PIL --exclude-module tkinter --exclude-module _tkinter \
   --exclude-module pystray --exclude-module keyboard --exclude-module pyperclip \
-  --exclude-module ssl --exclude-module _ssl --exclude-module hashlib \
   --hidden-import objc --hidden-import AppKit --hidden-import Quartz --hidden-import ApplicationServices \
   tools/app_entry.py
 
