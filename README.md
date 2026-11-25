@@ -171,7 +171,7 @@ macOS 源码安装时把 `tc` 换成 `.venv/bin/tc`，或者先 `source .venv/bi
 |---|---|
 | Windows（安装版） | 询问后下载 `TextConv-Setup-x.y.z.exe` 并直接运行，装完自动重启托盘 |
 | Windows（Portable） | 下载 `TextConv-Portable-x.y.z.exe`，提示你退出托盘后替换旧的 exe |
-| macOS | 下载 `.dmg` 到「下载」并打开，把 `TextConv.app` 拖进「应用程序」覆盖即可 |
+| macOS | 下载 `.dmg`，**自动覆盖安装到「应用程序」并重启**；覆盖失败时会保留旧版本并提示 |
 
 > 更新走 GitHub API，网络不通时会静默跳过（自动检查不弹任何错误）。
 > 可以设环境变量 `TEXTCONV_UPDATE_URL` 指向自建镜像，返回同样结构的 JSON 即可。

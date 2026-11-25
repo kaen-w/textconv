@@ -96,17 +96,80 @@ def pick_asset(release: Release, platform: Optional[str] = None) -> Optional[str
     return None
 
 
-def download(url: str, dest: str, timeout: float = 60.0) -> str:
-    """下载到 dest，返回路径。失败抛异常。"""
+def download(url: str, dest: str, timeout: float = 60.0, progress=None) -> str:
+    """下载到 dest，返回路径。失败抛异常。
+
+    progress(done, total) 会在下载过程中被调用，total 未知时为 0。
+    """
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     os.makedirs(os.path.dirname(os.path.abspath(dest)) or ".", exist_ok=True)
     with urllib.request.urlopen(request, timeout=timeout) as response, open(dest, "wb") as fh:
+        try:
+            total = int(response.headers.get("Content-Length") or 0)
+        except (TypeError, ValueError):
+            total = 0
+        done = 0
+        last_reported = -1
         while True:
             chunk = response.read(64 * 1024)
             if not chunk:
                 break
             fh.write(chunk)
+            done += len(chunk)
+            if progress is not None:
+                percent = int(done * 100 / total) if total else 0
+                if percent != last_reported:
+                    last_reported = percent
+                    try:
+                        progress(done, total)
+                    except Exception:
+                        pass
     return dest
+
+
+def install_dmg(dmg_path: str, app_name: str = "TextConv.app", target: str = "/Applications") -> str:
+    """把 dmg 里的 App 复制到 /Applications，返回安装路径。失败抛异常。"""
+    import shutil
+    import subprocess
+    import tempfile
+
+    mount = tempfile.mkdtemp(prefix="textconv-update-")
+    mounted = False
+    try:
+        result = subprocess.run(
+            ["hdiutil", "attach", dmg_path, "-nobrowse", "-quiet", "-mountpoint", mount],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(result.stderr.strip() or "挂载 dmg 失败")
+        mounted = True
+
+        source = os.path.join(mount, app_name)
+        if not os.path.isdir(source):
+            raise RuntimeError(f"dmg 里没有 {app_name}")
+
+        os.makedirs(target, exist_ok=True)
+        destination = os.path.join(target, app_name)
+        backup = destination + ".old"
+        if os.path.exists(backup):
+            shutil.rmtree(backup, ignore_errors=True)
+        if os.path.exists(destination):
+            os.rename(destination, backup)
+        try:
+            shutil.copytree(source, destination, symlinks=True)
+        except Exception:
+            # 复制失败就把旧版本还原，别让用户既没新的也没旧的
+            shutil.rmtree(destination, ignore_errors=True)
+            if os.path.exists(backup):
+                os.rename(backup, destination)
+            raise
+        shutil.rmtree(backup, ignore_errors=True)
+        return destination
+    finally:
+        if mounted:
+            subprocess.run(["hdiutil", "detach", mount, "-quiet"], capture_output=True)
+        shutil.rmtree(mount, ignore_errors=True)
 
 
 def due_for_check(last_iso: str, hours: int = 24) -> bool:

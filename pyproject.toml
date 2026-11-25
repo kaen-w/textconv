@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "textconv"
-version = "0.2.15"
+version = "0.2.16"
 description = "把零散文本一键转成 SQL IN / Excel / JSON / Python 格式（macOS 菜单栏 + 右键服务）"
 requires-python = ">=3.9"
 dependencies = [

@@ -31,6 +31,10 @@ PYINSTALLER_CONFIG_DIR="$ROOT/.pyinstaller" \
 plutil -insert LSUIElement -bool YES "$APP/Contents/Info.plist" 2>/dev/null || \
   plutil -replace LSUIElement -bool YES "$APP/Contents/Info.plist"
 
+# 版本号（PyInstaller 默认写 0.0.0）
+plutil -replace CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
+plutil -replace CFBundleVersion -string "$VERSION" "$APP/Contents/Info.plist"
+
 codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || true
 
 # 打包 dmg

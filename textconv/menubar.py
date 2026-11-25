@@ -106,6 +106,7 @@ class MenuBarApp(NSObject):
         self._flash_token = 0
         self._status_image = None
         self._update_hint = ""
+        self._updating = False
         self._last_input = None
         self._last_output = None
         return self
@@ -216,24 +217,58 @@ class MenuBarApp(NSObject):
         alert.addButtonWithTitle_("稍后")
         if alert.runModal() != NSAlertFirstButtonReturn:
             return
-
-        url = update.pick_asset(release, "darwin")
-        if not url:
-            self._alert("下载失败", "这个版本没有 macOS 安装包。")
+        if self._updating:
             return
-        name = url.rsplit("/", 1)[-1]
-        dest = os.path.join(os.path.expanduser("~/Downloads"), name)
+        self._updating = True
+        self._flash("正在下载更新…", 8)
+        threading.Thread(target=self._perform_update, args=(release,), daemon=True).start()
 
-        def worker():
-            try:
-                update.download(url, dest)
-                subprocess.run(["open", dest], check=False)
-                AppHelper.callAfter(self._alert, "已开始下载", f"安装包已保存到 {dest}\n\n打开后把 TextConv.app 拖进「应用程序」覆盖即可。")
-            except Exception as exc:
-                log.exception("下载更新失败")
-                AppHelper.callAfter(self._alert, "下载失败", str(exc))
+    @objc.python_method
+    def _perform_update(self, release) -> None:
+        """后台：下载 dmg → 覆盖安装 → 回主线程提示重启。"""
+        try:
+            url = update.pick_asset(release, "darwin")
+            if not url:
+                raise RuntimeError("这个版本没有 macOS 安装包")
+            name = url.rsplit("/", 1)[-1]
+            dest = os.path.join(app_dir(), "updates", name)
+            log.info("开始下载更新：%s", url)
 
-        threading.Thread(target=worker, daemon=True).start()
+            def progress(done: int, total: int) -> None:
+                if total:
+                    percent = int(done * 100 / total)
+                    AppHelper.callAfter(self._flash, f"下载 {percent}%", 8)
+
+            update.download(url, dest, progress=progress)
+            log.info("下载完成：%s", dest)
+            AppHelper.callAfter(self._flash, "正在安装…", 8)
+            installed = update.install_dmg(dest)
+            log.info("已安装到：%s", installed)
+            AppHelper.callAfter(self._update_ready, release, installed)
+        except Exception as exc:
+            log.exception("更新失败")
+            AppHelper.callAfter(self._update_failed, exc)
+
+    @objc.python_method
+    def _update_ready(self, release, installed: str) -> None:
+        self._updating = False
+        alert = NSAlert.alloc().init()
+        alert.setMessageText_(f"已更新到 {release.version}")
+        alert.setInformativeText_("现在重启 TextConv 以使用新版本？")
+        alert.addButtonWithTitle_("立即重启")
+        alert.addButtonWithTitle_("稍后")
+        if alert.runModal() == NSAlertFirstButtonReturn:
+            subprocess.Popen(["/usr/bin/open", installed])
+            NSApp.terminate_(None)
+
+    @objc.python_method
+    def _update_failed(self, exc: Exception) -> None:
+        self._updating = False
+        self._flash("更新失败")
+        self._alert(
+            "更新失败",
+            f"{exc}\n\n可以手动到 GitHub Releases 下载：\nhttps://github.com/kaen-w/textconv/releases/latest",
+        )
 
     @objc.python_method
     def _alert(self, title: str, message: str) -> None:
