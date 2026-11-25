@@ -24,6 +24,7 @@ log = logging.getLogger(__name__)
 
 REPO = "kaen-w/textconv"
 DEFAULT_API = f"https://api.github.com/repos/{REPO}/releases/latest"
+LATEST_PAGE = f"https://github.com/{REPO}/releases/latest"
 USER_AGENT = f"TextConv/{__version__} (+https://github.com/{REPO})"
 
 
@@ -54,8 +55,49 @@ def api_url() -> str:
     return os.environ.get("TEXTCONV_UPDATE_URL") or DEFAULT_API
 
 
+def _fetch_via_redirect(timeout: float) -> Optional[Release]:
+    """不调 API：请求 /releases/latest，从跳转后的 URL 里拿 tag。
+
+    GitHub 匿名 API 限 60 次/小时，超了直接 403；这个跳转没有这个限制。
+    """
+    request = urllib.request.Request(LATEST_PAGE, headers={"User-Agent": USER_AGENT})
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            final_url = response.geturl()
+    except Exception as exc:
+        log.info("重定向查版本失败：%s", exc)
+        return None
+
+    marker = "/releases/tag/"
+    if marker not in final_url:
+        log.info("重定向结果里没有 tag：%s", final_url)
+        return None
+    tag = final_url.split(marker, 1)[1].split("?", 1)[0].strip("/")
+    version = tag.lstrip("vV")
+    if not version:
+        return None
+
+    base = f"https://github.com/{REPO}/releases/download/{tag}"
+    assets = {
+        f"TextConv-{version}.dmg": f"{base}/TextConv-{version}.dmg",
+        f"TextConv-Setup-{version}.exe": f"{base}/TextConv-Setup-{version}.exe",
+        f"TextConv-Portable-{version}.exe": f"{base}/TextConv-Portable-{version}.exe",
+    }
+    return Release(version=version, tag=tag, page_url=final_url, notes="", assets=assets)
+
+
 def fetch_latest(timeout: float = 8.0) -> Optional[Release]:
-    """查询最新 Release；网络失败返回 None，不抛异常。"""
+    """查询最新 Release；网络失败返回 None，不抛异常。
+
+    先用重定向（不受 API 限流影响），失败再回退到 API。
+    """
+    release = _fetch_via_redirect(timeout)
+    if release is not None:
+        return release
+    return _fetch_via_api(timeout)
+
+
+def _fetch_via_api(timeout: float) -> Optional[Release]:
     request = urllib.request.Request(
         api_url(),
         headers={"User-Agent": USER_AGENT, "Accept": "application/vnd.github+json"},

@@ -182,6 +182,7 @@ class MenuBarApp(NSObject):
 
     # ------------------------------------------------------------ 更新
     def checkUpdates_(self, sender):
+        self._flash("检查更新…", 5)
         threading.Thread(target=self._update_worker, args=(True,), daemon=True).start()
 
     @objc.python_method
@@ -210,6 +211,7 @@ class MenuBarApp(NSObject):
             self._rebuild_menu()
             return
 
+        NSApp.activateIgnoringOtherApps_(True)
         alert = NSAlert.alloc().init()
         alert.setMessageText_(f"发现新版本 {release.version}")
         alert.setInformativeText_(f"当前版本 {__version__}。下载安装包并打开？")
@@ -234,10 +236,17 @@ class MenuBarApp(NSObject):
             dest = os.path.join(app_dir(), "updates", name)
             log.info("开始下载更新：%s", url)
 
+            last_logged = -1
+
             def progress(done: int, total: int) -> None:
-                if total:
-                    percent = int(done * 100 / total)
-                    AppHelper.callAfter(self._flash, f"下载 {percent}%", 8)
+                nonlocal last_logged
+                if not total:
+                    return
+                percent = int(done * 100 / total)
+                if percent >= last_logged + 10 or percent >= 100:
+                    last_logged = percent
+                    log.info("下载进度 %s%%（%s/%s）", percent, done, total)
+                AppHelper.callAfter(self._flash, f"下载 {percent}%", 8)
 
             update.download(url, dest, progress=progress)
             log.info("下载完成：%s", dest)
@@ -272,6 +281,7 @@ class MenuBarApp(NSObject):
 
     @objc.python_method
     def _alert(self, title: str, message: str) -> None:
+        NSApp.activateIgnoringOtherApps_(True)
         alert = NSAlert.alloc().init()
         alert.setMessageText_(title)
         alert.setInformativeText_(message)
