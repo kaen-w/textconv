@@ -16,7 +16,7 @@ import time
 
 from . import __version__, clipboard, core, paste
 from .config import Config, app_dir, config_path, state_path
-from .win_hotkeys import WinHotKeyManager, describe_combo
+from .win_hotkeys import WinHotKeyManager, describe_combo, normalize_combo
 
 log = logging.getLogger("textconv.tray")
 
@@ -401,14 +401,24 @@ class TrayApp:
             pass
 
     def _register_hotkeys(self) -> None:
-        self.hotkeys.stop()
+        bindings = []
         self.hotkey_errors = []
+        used: dict[str, str] = {}
         for fmt in core.FORMATS:
             combo = self.config.hotkeys.get(fmt.key, "")
             if not combo:
                 continue
-            if not self.hotkeys.register(combo, self._hotkey_action(fmt.key)):
-                self.hotkey_errors.append(describe_combo(combo))
+            normalized = normalize_combo(combo)
+            if normalized in used:
+                # 两个格式绑了同一个键：RegisterHotKey 只允许注册一次
+                self.hotkey_errors.append(f"{describe_combo(combo)}（与{used[normalized]}重复）")
+                continue
+            used[normalized] = fmt.label
+            bindings.append((combo, self._hotkey_action(fmt.key)))
+
+        for combo in self.hotkeys.apply(bindings):
+            if describe_combo(combo) not in self.hotkey_errors:
+                self.hotkey_errors.append(f"{describe_combo(combo)}（可能被占用）")
         self._write_state()
 
     def _hotkey_action(self, fmt_key: str):
@@ -461,9 +471,9 @@ def self_test() -> int:
 
     def hotkey_register():
         app = TrayApp()
-        ok = app.hotkeys.register("ctrl+alt+shift+9", lambda: None)
+        failed = app.hotkeys.apply([("ctrl+alt+shift+9", lambda: None)])
         app.hotkeys.stop()
-        assert ok, "注册失败"
+        assert not failed, f"注册失败：{failed}"
 
     check("hotkey", hotkey_register)
 
