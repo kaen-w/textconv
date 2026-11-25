@@ -293,6 +293,9 @@ debug.bat             # 带控制台启动，方便看报错
 python -m unittest discover -s tests
 ```
 
+发版节奏：日常修复只提交 main，**不涨版本号**；维护者说发版时才 bump + 打包 + 发 Release。
+具体流程见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
 打包：
 
 ```bash
